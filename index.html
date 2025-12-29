@@ -3,100 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Loading...</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        body { background-color: #0f172a; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; color: white; font-family: sans-serif; }
-        .loader-logo { width: 100px; height: 100px; border-radius: 50%; border: 4px solid #00E5FF; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
-        .text { margin-top: 20px; color: #00E5FF; font-weight: bold; letter-spacing: 1px; }
-    </style>
+    <title>Main Page</title>
 </head>
 <body>
-
-    <img src="https://i.ibb.co.com/xKPf6sBs/IMG-20251126-083605.jpg" class="loader-logo">
-    <div class="text">CONNECTING...</div>
-
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, doc, getDoc, setDoc, serverTimestamp, updateDoc, increment, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-        // 🔥 আপনার কনফিগারেশন বসান
-        const firebaseConfig = {
-            apiKey: "AIzaSyBfes_er_PkCOp1gKNSF8DbHxVfcvXV6TA",
-            authDomain: "tapzo-play.firebaseapp.com",
-            projectId: "tapzo-play",
-            storageBucket: "tapzo-play.firebasestorage.app",
-            messagingSenderId: "62158005008",
-            appId: "1:62158005008:web:412928320987c4ae77bb95",
-            measurementId: "G-4QEX1HHKJV"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-
-        window.onload = async () => {
-            // 1. টেলিগ্রাম ইউজার চেক
-            if (!tg.initDataUnsafe || !tg.initDataUnsafe.user) {
-                document.body.innerHTML = "<h2 style='color:red'>Access Denied</h2>";
-                return;
-            }
-
-            const user = tg.initDataUnsafe.user;
-            const uid = user.id.toString();
-
-            try {
-                // 2. ডাটাবেস চেক
-                const docRef = doc(db, "users", uid);
-                const docSnap = await getDoc(docRef);
-
-                if (docSnap.exists()) {
-                    // পুরানো ইউজার -> মেইন পেজে পাঠান
-                    await updateDoc(docRef, { lastActive: serverTimestamp() });
-                    redirectToMain(uid);
-                } else {
-                    // নতুন ইউজার -> রেজিস্ট্রেশন
-                    const startParam = tg.initDataUnsafe.start_param; 
-                    let referredBy = null;
-                    if (startParam && startParam.startsWith("ref_")) {
-                        const refId = startParam.split("_")[1];
-                        if (refId && refId !== uid) referredBy = refId;
-                    }
-
-                    const newUser = {
-                        id: user.id, first_name: user.first_name, username: user.username || "", balance: 0, 
-                        photo_url: user.photo_url || "", joinedAt: new Date(), currentCheckInDay: 0, 
-                        lastCheckInTime: null, lastActive: serverTimestamp(), referrals: 0, 
-                        referralEarnings: 0, totalEarnings: 0, lastCommissionPaid: 0, 
-                        referredBy: referredBy, verified: false
-                    };
-
-                    await setDoc(doc(db, "users", uid), newUser);
-
-                    // রেফার বোনাস
-                    if (referredBy) {
-                        try {
-                            const refRef = doc(db, "users", referredBy);
-                            await updateDoc(refRef, { balance: increment(40), referrals: increment(1) });
-                            await addDoc(collection(db, "users", referredBy, "notifications"), { title: "New Referral", message: `User ${user.first_name} joined.`, date: serverTimestamp(), read: false });
-                        } catch(e){}
-                    }
-                    
-                    // মেইন পেজে পাঠান
-                    redirectToMain(uid);
-                }
-            } catch (e) {
-                console.error(e);
-                document.querySelector('.text').innerText = "Network Error!";
-            }
-        };
-
-        function redirectToMain(uid) {
-            // UID ইউআরএল এর মাধ্যমে পাঠাচ্ছি যাতে মেইন পেজ দ্রুত ডাটা লোড করতে পারে
-            window.location.replace(`main.html?uid=${uid}`);
-        }
-    </script>
+    <h1>Welcome to My Website</h1>
+    <p>This is the Index Page.</p>
+    
+    <a href="home.html">Go to Home Page</a>
 </body>
 </html>
