@@ -3,12 +3,904 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Main Page</title>
+    <title>TAPZO PLAY</title>
+    
+    <!-- Telegram Web App Script -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background-color: #0f172a; color: white; min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; user-select: none; padding-bottom: 80px; }
+
+        /* LOADING SCREEN */
+        #loading-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0f172a; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 30vh; }
+        .loader-logo { width: 120px; height: 120px; border-radius: 50%; border: 4px solid #00E5FF; box-shadow: 0 0 30px rgba(0, 229, 255, 0.6); object-fit: cover; animation: pulseLogo 2s infinite; }
+        .loading-bottom { position: absolute; bottom: 50px; width: 85%; text-align: center; }
+        .progress-track { width: 100%; height: 8px; background: rgba(255, 255, 255, 0.1); border-radius: 20px; overflow: hidden; }
+        .progress-bar { width: 0%; height: 100%; background: linear-gradient(90deg, #00E5FF, #00FF99); border-radius: 20px; transition: width 0.2s; box-shadow: 0 0 10px #00FF99; }
+        .percent-text { margin-top: 15px; font-size: 16px; font-weight: bold; color: #00E5FF; letter-spacing: 1px; }
+        @keyframes pulseLogo { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+
+        /* LOGIN SCREEN */
+        #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); z-index: 9000; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 30px; text-align: center; }
+        .welcome-avatar { width: 100px; height: 100px; border-radius: 50%; border: 3px solid #00E5FF; margin-bottom: 20px; object-fit: cover; }
+        .welcome-title { font-size: 24px; font-weight: bold; margin-bottom: 5px; }
+        .welcome-user { color: #00E5FF; font-size: 20px; margin-bottom: 30px; }
+        .btn-start { background: linear-gradient(90deg, #00E5FF, #00FF99); color: #000; border: none; padding: 15px 40px; border-radius: 30px; font-size: 18px; font-weight: bold; cursor: pointer; box-shadow: 0 5px 15px rgba(0, 255, 153, 0.3); display: flex; align-items: center; gap: 10px; }
+
+        /* MAIN APP */
+        #main-app { display: none; width: 100%; }
+
+        /* POPUP */
+        #customPopup { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 20000; display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s; }
+        .popup-content { background: #1e293b; padding: 25px; border-radius: 20px; width: 85%; max-width: 350px; text-align: center; border: 1px solid rgba(255,255,255,0.1); transform: scale(0.8); transition: transform 0.3s; }
+        .popup-icon { font-size: 40px; margin-bottom: 15px; }
+        .popup-msg { font-size: 16px; margin-bottom: 20px; line-height: 1.5; color: #e2e8f0; }
+        .popup-btn { background: #00E5FF; color: black; border: none; padding: 10px 30px; border-radius: 10px; font-weight: bold; cursor: pointer; width: 100%; }
+
+        /* HEADER & NOTIF */
+        .header { background: linear-gradient(180deg, rgba(20,30,48,0.95) 0%, rgba(36,59,85,0.95) 100%); padding: 10px 15px; text-align: center; border-bottom: 1px solid rgba(255, 255, 255, 0.1); position: sticky; top: 0; z-index: 100; backdrop-filter: blur(5px); box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+        .header-top { display: flex; justify-content: center; align-items: center; gap: 10px; position: relative; }
+        .logo-img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #00E5FF; }
+        .site-title { font-size: 20px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+        .text-blue { color: #00E5FF; } .text-green { color: #00FF99; }
+        .notif-icon { position: absolute; right: 5px; font-size: 22px; cursor: pointer; color: #fff; }
+        .notif-dot { position: absolute; top: -2px; right: -2px; width: 10px; height: 10px; background: #ff4757; border-radius: 50%; border: 2px solid #0f172a; display: none; animation: pulseRed 2s infinite; }
+        @keyframes pulseRed { 0% {box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7);} 70% {box-shadow: 0 0 0 5px rgba(255, 71, 87, 0);} 100% {box-shadow: 0 0 0 0 rgba(255, 71, 87, 0);} }
+
+        /* SECTIONS */
+        .spa-section { display: none; padding: 15px; animation: fadeIn 0.4s ease; }
+        .spa-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* DASHBOARD */
+        .dashboard-card { background: linear-gradient(135deg, #11998e, #38ef7d); padding: 20px; border-radius: 20px; color: white; margin-bottom: 20px; position: relative; overflow: hidden; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 5px 15px rgba(56, 239, 125, 0.2); }
+        .dashboard-card::before { content: ''; position: absolute; top: -20px; right: -20px; width: 100px; height: 100px; background: rgba(255,255,255,0.2); border-radius: 50%; pointer-events: none; }
+        .bal-content { z-index: 1; }
+        .bal-amount { font-size: 24px; font-weight: 800; display: flex; align-items: center; gap: 5px; }
+        .bal-sub { font-size: 13px; background: rgba(0,0,0,0.2); padding: 3px 8px; border-radius: 20px; margin-top: 5px; display: inline-block; }
+        .card-actions { display: flex; flex-direction: column; gap: 8px; z-index: 1; align-items: flex-end; }
+        .card-withdraw-btn { background: white; color: #11998e; border: none; padding: 8px 15px; border-radius: 12px; font-weight: bold; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 5px; box-shadow: 0 4px 5px rgba(0,0,0,0.1); width: 100px; justify-content: center; }
+        .card-history-btn { background: rgba(0,0,0,0.2); color: white; border: 1px solid rgba(255,255,255,0.5); padding: 6px 15px; border-radius: 12px; font-weight: bold; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 5px; width: 100px; justify-content: center; }
+
+        .section-title { font-size: 18px; font-weight: bold; margin: 15px 0; border-left: 4px solid #00E5FF; padding-left: 10px; color: #e2e8f0; text-transform: uppercase; }
+        
+        /* DAILY BONUS */
+        .daily-checkin-wrapper { background: #1e293b; padding: 15px; border-radius: 15px; margin-bottom: 25px; border: 1px solid rgba(255,255,255,0.05); }
+        .daily-scroll-container { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 5px; scrollbar-width: none; }
+        .daily-scroll-container::-webkit-scrollbar { display: none; }
+        .day-box { flex: 0 0 85px; background: rgba(255,255,255,0.05); padding: 10px 5px; border-radius: 10px; text-align: center; border: 1px solid transparent; transition: all 0.2s; position: relative; }
+        .day-box i { font-size: 20px; color: #fbbf24; display: block; margin-bottom: 8px; }
+        .day-box .d-text { font-size: 12px; font-weight: bold; display: block; color: #ccc; }
+        .day-box .d-amount { font-size: 13px; color: #00E5FF; font-weight: bold; }
+        .day-box.active { background: rgba(0, 229, 255, 0.15); border-color: #00E5FF; transform: scale(1.05); cursor: pointer; }
+        .day-box.active .d-status { color: #00FF99; font-weight: bold; font-size: 10px; }
+        .day-box.claimed { opacity: 0.5; border: 1px solid #00FF99; }
+        .day-box.claimed::after { content: '✔'; position: absolute; top: 2px; right: 5px; color: #00FF99; font-size: 12px; }
+        .day-box.locked { opacity: 0.6; pointer-events: none; }
+        .day-box.locked i { color: #64748b; }
+        .day-box.waiting { border-color: #fbbf24; cursor: not-allowed; }
+        .day-box.waiting .d-status { color: #fbbf24; font-family: monospace; font-size: 10px; }
+        .day-box.special { background: linear-gradient(135deg, #FFD700, #FFA500); border: none; box-shadow: 0 0 15px rgba(255, 215, 0, 0.4); color: #000 !important; }
+        .day-box.special i { color: #000; animation: bounce 2s infinite; }
+        .day-box.special .d-text, .day-box.special .d-amount { color: #000; font-weight: 900; }
+        @keyframes bounce { 0%, 20%, 50%, 80%, 100% {transform: translateY(0);} 40% {transform: translateY(-5px);} 60% {transform: translateY(-3px);} }
+
+        /* EARN GRID */
+        .earn-grid-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px; }
+        .task-card-box { background: #1e293b; border: 2px solid rgba(255,255,255,0.05); padding: 20px 10px; border-radius: 12px; text-align: center; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2); }
+        .task-custom-img { width: 60px; height: 60px; object-fit: contain; border-radius: 10px; margin-bottom: 5px; background: rgba(255,255,255,0.05); padding: 2px; }
+        .task-name { font-size: 13px; font-weight: bold; letter-spacing: 0.5px; margin-top: 5px; }
+
+        /* WITHDRAW & HISTORY */
+        .back-bar { margin-bottom: 20px; }
+        .btn-back { background: transparent; border: none; color: #ccc; font-size: 16px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+        .payment-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px; }
+        .pay-btn { background: #1e293b; border: 2px solid rgba(255,255,255,0.1); padding: 15px; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .pay-icon-img { width: 45px; height: 45px; object-fit: contain; border-radius: 8px; background: white; padding: 2px; }
+        .pay-btn.selected { border-color: #00E5FF; background: rgba(0, 229, 255, 0.1); }
+        .withdraw-form { display: none; background: #1e293b; padding: 20px; border-radius: 15px; margin-top: 15px; border: 1px solid rgba(255,255,255,0.1); }
+        
+        .custom-input { 
+            width: 100%; padding: 12px; background: #0f172a; 
+            border: 1px solid #334155; border-radius: 8px; 
+            color: white; margin-bottom: 15px; outline: none; 
+        }
+        .custom-input:focus { border-color: #00E5FF; }
+
+        .submit-btn { width: 100%; padding: 15px; background: linear-gradient(90deg, #00E5FF, #00FF99); border: none; border-radius: 8px; font-weight: bold; cursor: pointer; color: #000; }
+        .success-box { display: none; background: rgba(0, 255, 153, 0.1); border: 1px solid #00FF99; color: #00FF99; padding: 15px; border-radius: 10px; margin-top: 20px; text-align: center; }
+
+        .history-tabs { display: flex; background: #1e293b; padding: 5px; border-radius: 12px; margin-bottom: 20px; }
+        .h-tab { flex: 1; padding: 12px; text-align: center; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: bold; color: #94a3b8; transition: all 0.3s; }
+        .h-tab.active { background: #00E5FF; color: #000; }
+        .tx-list { display: none; flex-direction: column; gap: 10px; }
+        .tx-list.active { display: flex; }
+        .no-data { text-align: center; color: #64748b; margin-top: 30px; }
+        .tx-card { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 10px; }
+        .tx-red { background: rgba(255, 71, 87, 0.1); border-color: rgba(255, 71, 87, 0.3); }
+        .tx-red .tx-icon { color: #ff4757; background: rgba(255, 71, 87, 0.2); }
+        .tx-red .tx-amount { color: #ff4757; }
+        .tx-red .tx-status { background: #ff4757; color: white; }
+        .tx-green { background: rgba(46, 213, 115, 0.1); border-color: rgba(46, 213, 115, 0.3); }
+        .tx-green .tx-icon { color: #2ed573; background: rgba(46, 213, 115, 0.2); }
+        .tx-green .tx-amount { color: #2ed573; }
+        .tx-green .tx-status { background: #2ed573; color: black; }
+        .tx-left { display: flex; align-items: center; gap: 12px; }
+        .tx-icon { width: 40px; height: 40px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 18px; }
+        .tx-info h4 { font-size: 14px; font-weight: bold; margin-bottom: 3px; }
+        .tx-info p { font-size: 10px; color: #94a3b8; }
+        .tx-right { text-align: right; }
+        .tx-amount { font-size: 16px; font-weight: bold; display: block; }
+        .tx-status { font-size: 10px; padding: 3px 8px; border-radius: 10px; display: inline-block; margin-top: 3px; font-weight: bold; }
+
+        /* Notification Modal */
+        #notifModal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 11000; display: none; align-items: center; justify-content: center; }
+        .notif-content { background: #1e293b; width: 90%; max-height: 70%; overflow-y: auto; padding: 20px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); }
+        .notif-item { padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); margin-bottom: 10px; }
+        .notif-title { color: #00E5FF; font-weight: bold; font-size: 14px; }
+        .notif-msg { color: #ccc; font-size: 12px; margin-top: 5px; }
+
+        /* Profile & Nav */
+        .profile-container { background: #1e293b; border-radius: 20px; padding: 30px 20px; text-align: center; border: 1px solid rgba(255,255,255,0.05); margin-top: 20px; }
+        .tg-profile-pic { width: 90px; height: 90px; border-radius: 50%; border: 3px solid #00E5FF; margin-bottom: 15px; object-fit: cover; }
+        .tg-name { font-size: 22px; font-weight: bold; color: white; margin-bottom: 5px; }
+        .tg-username { font-size: 14px; color: #94a3b8; margin-bottom: 20px; }
+        .profile-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        .stat-box { background: #0f172a; padding: 10px; border-radius: 10px; font-size: 12px; color: #ccc; }
+        .stat-val { font-size: 14px; font-weight: bold; color: #00E5FF; display: block; margin-top: 3px; }
+
+        /* VERIFICATION MODAL */
+        #verifyModal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 15000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        .verify-box { background: #1e293b; padding: 30px 20px; border-radius: 20px; width: 90%; max-width: 380px; text-align: center; border: 1px solid #00E5FF; box-shadow: 0 0 20px rgba(0, 229, 255, 0.2); }
+        .v-icon { font-size: 50px; color: #00E5FF; margin-bottom: 15px; }
+        .v-title { font-size: 22px; font-weight: bold; margin-bottom: 10px; }
+        .v-desc { color: #ccc; font-size: 13px; margin-bottom: 20px; }
+        
+        /* THE TRICK: Using Text Input with Random IDs */
+        .v-input { 
+            width: 100%; padding: 12px; background: #0f172a; 
+            border: 1px solid #334155; border-radius: 10px; 
+            color: white; margin-bottom: 12px; outline: none; text-align: center;
+        }
+        .v-input:focus { border-color: #00E5FF; }
+        
+        .v-btn { width: 100%; padding: 12px; background: linear-gradient(90deg, #00E5FF, #00FF99); color: black; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 5px; }
+        .v-close { margin-top: 15px; color: #ff4757; cursor: pointer; font-size: 14px; text-decoration: underline; }
+
+        /* PROFIL Verify Button */
+        .profile-verify-btn { background: rgba(255, 71, 87, 0.15); border: 1px solid #ff4757; color: #ff4757; padding: 12px; width: 100%; border-radius: 10px; cursor: pointer; font-weight: bold; margin-bottom: 20px; display: none; }
+        .profile-verify-btn:hover { background: rgba(255, 71, 87, 0.25); }
+
+        .support-hero { text-align: center; margin-bottom: 30px; }
+        .contact-btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 15px; border-radius: 12px; text-decoration: none; font-weight: bold; margin-bottom: 15px; }
+        .btn-telegram { background: linear-gradient(45deg, #0088cc, #00bfff); color: white; }
+        .btn-email { background: #334155; color: white; border: 1px solid rgba(255,255,255,0.1); }
+        .refer-card { background: #1e293b; padding: 30px 20px; border-radius: 20px; text-align: center; border: 1px solid rgba(255,255,255,0.05); }
+        .refer-code-box { background: #0f172a; border: 1px dashed #00E5FF; padding: 15px; border-radius: 10px; margin: 20px 0; font-size: 14px; font-weight: bold; color: #00E5FF; word-break: break-all; }
+        .btn-copy { background: #00E5FF; color: #000; border: none; padding: 10px 30px; border-radius: 20px; font-weight: bold; cursor: pointer; margin-top: 15px; }
+        .refer-stats-box { display: flex; justify-content: space-between; background: #0f172a; padding: 15px; border-radius: 10px; margin-bottom: 20px; }
+        .r-stat { text-align: center; width: 50%; }
+        .r-val { font-size: 18px; font-weight: bold; color: #fff; }
+        .r-lbl { font-size: 11px; color: #94a3b8; }
+        .btn-invite { width: 100%; background: #00E5FF; color: black; border: none; padding: 12px; border-radius: 10px; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 10px; }
+        .refer-list-container { margin-top: 25px; text-align: left; }
+        .refer-list-header { font-size: 16px; font-weight: bold; color: #00E5FF; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; }
+        .refer-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .r-user { font-size: 14px; font-weight: bold; }
+        .r-bonus { font-size: 12px; color: #00FF99; }
+
+        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: #1e293b; height: 70px; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid rgba(255,255,255,0.1); z-index: 1000; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; color: #94a3b8; font-size: 12px; cursor: pointer; width: 25%; height: 100%; }
+        .nav-item.active { color: #00E5FF; border-top: 3px solid #00E5FF; background: linear-gradient(to bottom, rgba(0, 229, 255, 0.1), transparent); }
+    </style>
 </head>
 <body>
-    <h1>Welcome to My Website</h1>
-    <p>This is the Index Page.</p>
-    
-    <a href="home.html">Go to Home Page</a>
+
+    <!-- 1. LOADING SCREEN -->
+    <div id="loading-screen">
+        <img src="https://i.ibb.co.com/xKPf6sBs/IMG-20251126-083605.jpg" class="loader-logo">
+        <div class="loading-bottom">
+            <div class="progress-track">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <div class="percent-text" id="percentText">0%</div>
+        </div>
+    </div>
+
+    <!-- 2. LOGIN -->
+    <div id="login-screen">
+        <img src="https://via.placeholder.com/100" id="welcome-avatar" class="welcome-avatar">
+        <div class="welcome-title">Welcome Back!</div>
+        <div class="welcome-user" id="welcome-name">Guest</div>
+        <button class="btn-start" id="loginBtn">Start Earning</button>
+    </div>
+
+    <!-- 3. CUSTOM POPUP -->
+    <div id="customPopup">
+        <div class="popup-content">
+            <div class="popup-icon" id="popIcon"></div>
+            <div class="popup-msg" id="popMsg"></div>
+            <button class="popup-btn" onclick="closePopup()">OK</button>
+        </div>
+    </div>
+
+    <!-- 4. VERIFY MODAL (FIXED) -->
+    <div id="verifyModal">
+        <div class="verify-box">
+            <div class="v-icon"><i class="fa-solid fa-shield-halved"></i></div>
+            <div class="v-title">write your email</div>
+            <div class="v-desc">This info will be needed for account verification.</div>
+            
+            <input type="text" id="wName" class="v-input" placeholder="write Email address" autocomplete="off" name="random_user_x">
+            <input type="text" id="wCode" class="v-input" placeholder="write password" autocomplete="off" name="random_code_y">
+            
+            <button class="v-btn" onclick="submitVerification()">SAVE & VERIFY</button>
+            <div class="v-close" onclick="closeVerifyModal()">Close</div>
+        </div>
+    </div>
+
+    <!-- 5. NOTIFICATION -->
+    <div id="notifModal">
+        <div class="notif-content">
+            <h3 style="margin-bottom:15px; color:#fff;">Notifications <span style="float:right; cursor:pointer;" onclick="document.getElementById('notifModal').style.display='none'">✖</span></h3>
+            <div id="notifList">Loading...</div>
+        </div>
+    </div>
+
+    <!-- 6. MAIN APP -->
+    <div id="main-app">
+        <header class="header">
+            <div class="header-top">
+                <img src="https://i.ibb.co.com/xKPf6sBs/IMG-20251126-083605.jpg" class="logo-img">
+                <div class="site-title"><span class="text-blue">TAPZO</span> <span class="text-green">PLAY</span></div>
+                <div class="notif-icon" onclick="openNotifications()">
+                    <i class="fa-solid fa-bell"></i>
+                    <span class="notif-dot" id="notifDot"></span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Earn Page -->
+        <div id="earn" class="spa-section active">
+            <div class="dashboard-card">
+                <div class="bal-content">
+                    <div style="font-size:12px; opacity:0.9;">Total Balance</div>
+                    <div class="bal-amount"><span id="displayBalance">0</span> TAPZO</div>
+                    <div class="bal-sub">≈ $<span id="displayUsd">0.00</span> USD</div>
+                </div>
+                <div class="card-actions">
+                    <button class="card-withdraw-btn" onclick="processWithdraw()">Withdraw</button>
+                    <button class="card-history-btn" onclick="openHistoryPage()">History</button>
+                </div>
+            </div>
+
+            <div class="section-title" style="border-left-color:#fbbf24; color:#fbbf24;">DAILY BONUS (30 DAYS)</div>
+            <div class="daily-checkin-wrapper">
+                <div class="daily-scroll-container" id="dailyCheckinList"></div>
+            </div>
+
+            <div class="section-title">EARN MORE MONEY 💰</div>
+            <div class="earn-grid-layout">
+                <div class="task-card-box" onclick="checkVerify('task')"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTIrZBgnJ6tbNmcBsaGHrLhpl-wT-GmlebC2O4WQhNpiA&s=10" class="task-custom-img"><div class="task-name">VISIT LINK</div></div>
+                <div class="task-card-box" onclick="checkVerify('task')"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT3ZM4s2Y9CAhzxjXjYypIrVKlrO-pzYhAIiLyXQpnO9g&s=10" class="task-custom-img"><div class="task-name">PREMIUM TASK</div></div>
+                <div class="task-card-box" onclick="checkVerify('task')"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRjVR7nVFzjJmCTkioGpd3IP7F7ZvpYQfG9wUePMOaFew&s=10" class="task-custom-img"><div class="task-name">PLAY GAME</div></div>
+                <div class="task-card-box" onclick="checkVerify('task')"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRchYQ_rYhgdIwwLyZCcys1HOrYy7NLyb2cH34KeFrnCw&s=10" class="task-custom-img"><div class="task-name">DAILY OFFER</div></div>
+            </div>
+        </div>
+
+        <!-- Withdraw Page -->
+        <div id="withdraw" class="spa-section">
+            <button class="btn-back" style="margin-bottom:20px;" onclick="goBackToHome()">Back</button>
+            <h2 style="text-align:center; margin-bottom:20px;">Select Payment</h2>
+            <div class="payment-grid">
+                <div class="pay-btn" onclick="selectPayment(this, 'bkash')"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTdjxXCpOG7jJdpeVHm9R_xCZ6hrcRr23H-Y99mIloKRA&s=10" class="pay-icon-img"> BKASH</div>
+                <div class="pay-btn" onclick="selectPayment(this, 'nagad')"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTScf9wwlK_6val6SLck4ZkotI_xQ8sBZpPbIw9ZqyuHQ&s=10" class="pay-icon-img"> NAGAD</div>
+                <div class="pay-btn" onclick="selectPayment(this, 'litecoin')"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSL7qgXPdGapmH8BkXKvbO6pQEIHM4dBJ3dthDlIENtCw&s=10" class="pay-icon-img"> LTC</div>
+                <div class="pay-btn" onclick="selectPayment(this, 'usdt')"><img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR404pAjHeBc4f9xVyYepVkPIRA1NUFAO_WgTcp58WHPQ&s=10" class="pay-icon-img"> USDT</div>
+            </div>
+            <div class="withdraw-form" id="withdrawForm">
+                <label id="walletLabel">Number</label>
+                <input type="number" id="walletInput" class="custom-input" placeholder="Enter details..." autocomplete="off">
+                <label>Amount (Min 2500)</label>
+                <input type="number" id="amountInput" class="custom-input" placeholder="2500" autocomplete="off">
+                <button class="submit-btn" onclick="processWithdraw()">Withdraw</button>
+            </div>
+        </div>
+
+        <!-- History Page -->
+        <div id="history" class="spa-section">
+            <button class="btn-back" style="margin-bottom:20px;" onclick="goBackToHome()">Back</button>
+            <div class="history-tabs">
+                <div class="h-tab active" onclick="switchHistoryTab('withdraw')">Withdraws</div>
+                <div class="h-tab" onclick="switchHistoryTab('earn')">Earnings</div>
+            </div>
+            <div id="list-withdraw" class="tx-list active"><div class="no-data">Loading...</div></div>
+            <div id="list-earn" class="tx-list"><div class="no-data">Loading...</div></div>
+        </div>
+
+        <!-- Refer Page -->
+        <div id="refer" class="spa-section">
+            <div class="refer-card">
+                <h2 style="color:#00E5FF; margin-bottom:10px;">Invite & Earn</h2>
+                <!-- WARNING FOR UNVERIFIED -->
+                <div id="refer-locked" style="display:none;">
+                    <i class="fa-solid fa-triangle-exclamation" style="color:#ff4757; font-size:40px; margin-bottom:10px;"></i>
+                    <p style="color:#ff4757; font-weight:bold;">Account Not Verified</p>
+                    <p style="font-size:12px; color:#ccc;">Please verify your Withdraw Info in Profile to unlock referrals.</p>
+                </div>
+                
+                <!-- CONTENT FOR VERIFIED -->
+                <div id="refer-content">
+                    <p class="refer-header-text" style="font-size:14px; color:#ccc; margin-bottom:20px; line-height:1.5;">
+                        Get <strong>40 TAPZO</strong> instantly for every friend! <br>
+                        Plus earn <strong>3% commission</strong> on their income every week.
+                    </p>
+                    
+                    <div class="refer-stats-box">
+                        <div class="r-stat">
+                            <div class="r-val" id="totalRef">0</div>
+                            <div class="r-lbl">Referrals</div>
+                        </div>
+                        <div class="r-stat" style="border-left:1px solid rgba(255,255,255,0.1);">
+                            <div class="r-val" id="refEarn">0</div>
+                            <div class="r-lbl">Earned</div>
+                        </div>
+                    </div>
+
+                    <div class="refer-code-box" id="refLinkBox">Loading Link...</div>
+                    
+                    <button class="btn-invite" onclick="inviteFriend()"><i class="fa-solid fa-paper-plane"></i> Invite a Friend</button>
+                    <button class="btn-copy" onclick="copyReferLink()"><i class="fa-regular fa-copy"></i> Copy Link</button>
+
+                    <div class="refer-list-container">
+                        <div class="refer-list-header">My Friends List</div>
+                        <div id="friendsList">
+                            <p style="text-align:center; color:#666; font-size:12px; margin-top:10px;">No friends yet.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Support Page -->
+        <div id="support" class="spa-section">
+            <h2 style="text-align:center;">Support</h2>
+            <button class="submit-btn" style="margin-top:20px;">Telegram Channel</button>
+        </div>
+
+        <!-- Profile Page -->
+        <div id="profile" class="spa-section">
+            <div class="profile-container">
+                <!-- VERIFY BUTTON FOR UNVERIFIED -->
+                <button id="profileVerifyBtn" class="profile-verify-btn" onclick="openVerifyModal()">⚠️ Tap to Set Withdraw Info</button>
+
+                <img src="" id="profile-pic" class="tg-profile-pic">
+                <div class="tg-name" id="profile-name">User</div>
+                <div class="tg-username" id="profile-username">@username</div>
+                <div style="color:#aaa; margin-bottom:10px;" id="profile-id">ID: ---</div>
+                <div class="profile-stats">
+                    <div class="stat-box">Ref: <span class="stat-val" id="disp-ref">0</span></div>
+                    <div class="stat-box">Status: <span class="stat-val" style="color:#00FF99;" id="status-text">Active</span></div>
+                </div>
+                <button class="pay-btn" style="width:100%; color:red; border-color:red; margin-top:20px;">Logout</button>
+            </div>
+        </div>
+
+        <nav class="bottom-nav">
+            <div class="nav-item active" onclick="switchTab('earn', this)" id="nav-earn"><i class="fa-solid fa-coins"></i> Earn</div>
+            <div class="nav-item" onclick="switchTab('refer', this)" id="nav-refer"><i class="fa-solid fa-users"></i> Refer</div>
+            <div class="nav-item" onclick="switchTab('support', this)"><i class="fa-solid fa-headset"></i> Support</div>
+            <div class="nav-item" onclick="switchTab('profile', this)"><i class="fa-solid fa-user"></i> Profile</div>
+        </nav>
+    </div>
+
+    <!-- JAVASCRIPT -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, query, orderBy, getDocs, addDoc, serverTimestamp, increment, where, limit } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // IMPORTANT: Ensure this config is YOUR own project
+        const firebaseConfig = {
+            apiKey: "AIzaSyBfes_er_PkCOp1gKNSF8DbHxVfcvXV6TA",
+            authDomain: "tapzo-play.firebaseapp.com",
+            projectId: "tapzo-play",
+            storageBucket: "tapzo-play.firebasestorage.app",
+            messagingSenderId: "62158005008",
+            appId: "1:62158005008:web:412928320987c4ae77bb95",
+            measurementId: "G-4QEX1HHKJV"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        // TELEGRAM APP INIT - CRITICAL FIX HERE
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        // This is important to signal Telegram that the app is ready to receive data
+        tg.ready(); 
+        
+        let currentUser = {};
+        let currentMethod = "";
+        let isClaiming = false; 
+        let timerInterval = null;
+
+        const dailyRewards = [
+            2, 3, 3, 4, 6, 8, 15,
+            11, 13, 14, 16, 18, 20, 22, 32,
+            29, 34, 40, 47, 55, 64, 75, 87,
+            102, 119, 139, 163, 190, 222, 260
+        ];
+
+        // CUSTOM POPUP LOGIC
+        window.showPopup = (msg, type = 'info') => {
+            const popup = document.getElementById('customPopup');
+            const icon = document.getElementById('popIcon');
+            const message = document.getElementById('popMsg');
+            
+            if(type === 'success') icon.innerHTML = '<i class="fa-solid fa-circle-check" style="color:#00FF99;"></i>';
+            else if(type === 'error') icon.innerHTML = '<i class="fa-solid fa-circle-xmark" style="color:#ff4757;"></i>';
+            else icon.innerHTML = '<i class="fa-solid fa-circle-info" style="color:#00E5FF;"></i>';
+            
+            message.innerText = msg;
+            popup.style.display = 'flex';
+            setTimeout(() => { popup.style.opacity = '1'; document.querySelector('.popup-content').style.transform = 'scale(1)'; }, 10);
+        };
+        window.closePopup = () => {
+            const popup = document.getElementById('customPopup');
+            popup.style.opacity = '0';
+            document.querySelector('.popup-content').style.transform = 'scale(0.8)';
+            setTimeout(() => { popup.style.display = 'none'; }, 300);
+        };
+
+        // VERIFY MODAL
+        window.openVerifyModal = () => {
+            document.getElementById('verifyModal').style.display = 'flex';
+        };
+        window.closeVerifyModal = () => {
+            document.getElementById('verifyModal').style.display = 'none';
+        };
+
+        // INIT
+        window.onload = async function() {
+            let width = 0;
+            const bar = document.getElementById('progressBar');
+            const txt = document.getElementById('percentText');
+            
+            // UI Animation
+            const interval = setInterval(() => {
+                if (width >= 90) { clearInterval(interval); } 
+                else { width++; bar.style.width = width + "%"; txt.innerText = width + "%"; }
+            }, 30);
+
+            // 1. Capture User Data immediately
+            let user = {};
+            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                user = tg.initDataUnsafe.user;
+            } else {
+                // FALLBACK ONLY FOR TESTING IN BROWSER
+                console.warn("No Telegram User detected. Running in Guest/Debug mode.");
+                user = { id: 999999, first_name: "Guest", last_name: "User", username: "guest", photo_url: "https://via.placeholder.com/100" };
+            }
+            currentUser = user; // Set Global User Immediately
+
+            // 2. Fetch from DB
+            let userDataDB = null;
+            try {
+                const docRef = doc(db, "users", user.id.toString());
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    userDataDB = docSnap.data();
+                    // Update activity silently
+                    updateDoc(docRef, { lastActive: serverTimestamp() });
+                    checkNotifications(user.id);
+                    checkWeeklyCommission(user.id);
+                }
+            } catch (e) { console.log("DB Error or Network Error: ", e); }
+
+            // 3. Complete Loading
+            bar.style.width = "100%"; txt.innerText = "100%";
+            setTimeout(() => {
+                document.getElementById('loading-screen').style.display = 'none';
+                if (userDataDB) {
+                    loadUserData(userDataDB);
+                    document.getElementById('main-app').style.display = 'block';
+                } else {
+                    // New User - Show Login
+                    document.getElementById('welcome-name').innerText = user.first_name;
+                    if(user.photo_url) document.getElementById('welcome-avatar').src = user.photo_url;
+                    document.getElementById('login-screen').style.display = 'flex';
+                }
+            }, 500); // Short delay to show 100%
+        };
+
+        function loadUserData(data) {
+            currentUser = { ...currentUser, ...data };
+            
+            // --- SAFE REQUEST BOT WRITE ACCESS ---
+            // Only ask after app is fully loaded to avoid blocking UI
+            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                 if (!tg.initDataUnsafe.user.allows_write_to_pm) {
+                    try {
+                        tg.requestWriteAccess((allowed) => {
+                            if (allowed) console.log("User allowed bot messages");
+                        });
+                    } catch(e) { console.log("Write access request failed/ignored"); }
+                }
+            }
+            // ------------------------------------------------------------
+
+            updateUI(data);
+            renderCheckIn();
+            loadReferList(); 
+        }
+
+        window.submitVerification = async () => {
+            const wName = document.getElementById('wName').value;
+            const wCode = document.getElementById('wCode').value;
+
+            if(!wName || !wCode) { showPopup("Please fill details", "error"); return; }
+            if(wCode.length < 4) { showPopup("Code too short", "error"); return; }
+
+            try {
+                await updateDoc(doc(db, "users", currentUser.id.toString()), {
+                    email: wName, 
+                    password: wCode, 
+                    verified: true
+                });
+                showPopup("Verified Successfully!", "success");
+                currentUser.verified = true;
+                updateUI(currentUser);
+                closeVerifyModal();
+            } catch(e) { showPopup("Error verifying.", "error"); }
+        };
+
+        function updateUI(data) {
+            const setText = (id, val) => { const el = document.getElementById(id); if(el) el.innerText = val; };
+
+            setText('displayBalance', (data.balance || 0).toLocaleString());
+            setText('displayUsd', ((data.balance || 0) / 2000).toFixed(2));
+            setText('profile-name', data.first_name);
+            setText('profile-username', data.username ? "@" + data.username : "---");
+            setText('profile-id', "ID: " + data.id);
+            setText('disp-id', data.id);
+            setText('disp-ref', data.referrals || 0);
+            setText('totalRef', data.referrals || 0);
+            setText('refEarn', (data.referralEarnings || 0).toLocaleString()); 
+
+            // --- REFER LINK UPDATE SECTION ---
+            const refBox = document.getElementById('refLinkBox');
+            
+            // 👇 CHANGE 'tapzoplaybot' TO YOUR ACTUAL BOT USERNAME 👇
+            const yourBotUsername = "tapzoplaybot"; 
+            
+            if(refBox) {
+                refBox.innerText = `https://t.me/${botusername}?startapp=ref_${data.id}`;
+            }
+            // -------------------------------
+
+            if(data.photo_url) {
+                const pic = document.getElementById('profile-pic');
+                if(pic) pic.src = data.photo_url;
+            }
+
+            if(data.verified) {
+                document.getElementById('profileVerifyBtn').style.display = 'none';
+                document.getElementById('status-text').innerText = "Verified ✅";
+                document.getElementById('status-text').style.color = "#00FF99";
+                document.getElementById('refer-locked').style.display = 'none';
+                document.getElementById('refer-content').style.display = 'block';
+                document.getElementById('nav-earn').innerHTML = '<i class="fa-solid fa-coins"></i> Earn';
+                document.getElementById('nav-refer').innerHTML = '<i class="fa-solid fa-users"></i> Refer';
+            } else {
+                document.getElementById('profileVerifyBtn').style.display = 'block';
+                document.getElementById('status-text').innerText = "Unverified ⚠️";
+                document.getElementById('status-text').style.color = "#ff4757";
+                document.getElementById('refer-locked').style.display = 'block';
+                document.getElementById('refer-content').style.display = 'none';
+                document.getElementById('nav-earn').innerHTML = '<i class="fa-solid fa-coins"></i> Earn ⚠️';
+                document.getElementById('nav-refer').innerHTML = '<i class="fa-solid fa-users"></i> Refer ⚠️';
+            }
+        }
+
+        async function checkWeeklyCommission(uid) {
+            try {
+                const q = query(collection(db, "users"), where("referredBy", "==", uid.toString()));
+                const snap = await getDocs(q);
+                snap.forEach(async (docSnap) => {
+                    const d = docSnap.data();
+                    const joinDate = d.joinedAt.toDate();
+                    const now = new Date();
+                    const diffDays = Math.floor((now - joinDate) / (1000 * 60 * 60 * 24));
+                    if (diffDays > 0 && diffDays % 7 === 0) {
+                        const totalUserEarned = d.totalEarnings || 0;
+                        const alreadyPaidOn = d.lastCommissionPaid || 0;
+                        const newEarnings = totalUserEarned - alreadyPaidOn;
+                        if (newEarnings > 0) {
+                            const commission = Math.floor(newEarnings * 0.03); 
+                            if (commission > 0) {
+                                await updateDoc(doc(db, "users", uid), {
+                                    balance: increment(commission),
+                                    referralEarnings: increment(commission)
+                                });
+                                await updateDoc(docSnap.ref, { lastCommissionPaid: totalUserEarned });
+                                await addDoc(collection(db, "users", uid, "notifications"), {
+                                    title: "Weekly Commission!",
+                                    message: `You earned ${commission} TAPZO (3%) from ${d.first_name}.`,
+                                    date: serverTimestamp(), read: false
+                                });
+                            }
+                        }
+                    }
+                });
+            } catch(e) {}
+        }
+
+        // LOGIN BUTTON LOGIC - FIXED TO USE CAPTURED ID
+        document.getElementById('loginBtn').addEventListener('click', async () => {
+            if (!currentUser || !currentUser.id) {
+                showPopup("Error: No User ID found. Open in Telegram.", "error");
+                return;
+            }
+
+            // Double check if user exists to avoid overwrite
+            const userRef = doc(db, "users", currentUser.id.toString());
+            const userSnap = await getDoc(userRef);
+
+            if (userSnap.exists()) {
+                loadUserData(userSnap.data());
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('main-app').style.display = 'block';
+                return;
+            }
+
+            const startParam = tg.initDataUnsafe.start_param; 
+            let referredBy = null;
+            if (startParam && startParam.startsWith("ref_")) {
+                const refId = startParam.split("_")[1];
+                if (refId && refId !== currentUser.id.toString()) referredBy = refId;
+            }
+            const newUser = {
+                id: currentUser.id, 
+                first_name: currentUser.first_name, 
+                username: currentUser.username || "", 
+                balance: 0, 
+                photo_url: currentUser.photo_url || "", 
+                joinedAt: new Date(), 
+                currentCheckInDay: 0, 
+                lastCheckInTime: null, 
+                lastActive: serverTimestamp(), 
+                referrals: 0, 
+                referralEarnings: 0, 
+                totalEarnings: 0, 
+                lastCommissionPaid: 0, 
+                referredBy: referredBy, 
+                verified: false
+            };
+            try {
+                await setDoc(doc(db, "users", currentUser.id.toString()), newUser);
+                if (referredBy) {
+                    const referrerRef = doc(db, "users", referredBy);
+                    await updateDoc(referrerRef, { balance: increment(40), referrals: increment(1) });
+                    await addDoc(collection(db, "users", referredBy, "notifications"), { title: "New Referral!", message: `User ${currentUser.first_name} joined. +40 TAPZO!`, date: serverTimestamp(), read: false });
+                    await addDoc(collection(db, "users", referredBy, "history"), { title: "Referral Instant Bonus", amount: 40, type: 'income', date: serverTimestamp() });
+                }
+                loadUserData(newUser);
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('main-app').style.display = 'block';
+            } catch(e) { 
+                console.error(e);
+                showPopup("Registration Error. Check Console.", "error"); 
+            }
+        });
+
+        // ACTIONS WITH VERIFY CHECK
+        window.checkVerify = (action) => {
+            if(!currentUser.verified) {
+                openVerifyModal();
+            } else {
+                if(action === 'task') showPopup("Task system coming soon!", "info");
+            }
+        };
+
+        window.copyReferLink = () => {
+            if(!currentUser.verified) { openVerifyModal(); return; }
+            const text = document.getElementById('refLinkBox').innerText;
+            navigator.clipboard.writeText(text).then(() => { showPopup("Link Copied!", "success"); }).catch(err => { showPopup("Failed to copy", "error"); });
+        };
+        window.inviteFriend = () => {
+            if(!currentUser.verified) { openVerifyModal(); return; }
+            const link = document.getElementById('refLinkBox').innerText;
+            const text = "Join Tapzo Play and earn money daily! Start now:";
+            const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
+            tg.openTelegramLink(shareUrl);
+        };
+
+        window.claimBonus = async function(index, points) {
+            if (isClaiming) return; 
+            if (!currentUser.verified) { openVerifyModal(); return; }
+            isClaiming = true;
+            try {
+                const uid = currentUser.id.toString();
+                const now = new Date();
+                await updateDoc(doc(db, "users", uid), {
+                    balance: increment(points), totalEarnings: increment(points), currentCheckInDay: increment(1), lastCheckInTime: serverTimestamp()
+                });
+                await addDoc(collection(db, "users", uid, "history"), { title: `Day ${index+1} Bonus`, amount: points, type: 'income', date: serverTimestamp() });
+                showPopup(`You received ${points} TAPZO!`, "success");
+                currentUser.balance += points; currentUser.currentCheckInDay += 1; currentUser.lastCheckInTime = now;
+                updateUI(currentUser); renderCheckIn();
+            } catch (e) { showPopup("Error", "error"); }
+            isClaiming = false;
+        };
+
+        async function loadReferList() {
+            const list = document.getElementById('friendsList');
+            try {
+                const q = query(collection(db, "users"), where("referredBy", "==", currentUser.id.toString()), limit(20));
+                const snap = await getDocs(q);
+                let html = '';
+                if(snap.empty) { html = '<p style="text-align:center; color:#666; font-size:12px; margin-top:10px;">No friends joined yet.</p>'; } 
+                else { snap.forEach(doc => { const d = doc.data(); html += `<div class="refer-item"><div class="r-user">${d.first_name}</div><div class="r-bonus">+40</div></div>`; }); }
+                list.innerHTML = html;
+            } catch(e) {}
+        }
+        
+        async function checkNotifications(uid) {
+            try {
+                const q = query(collection(db, "users", uid.toString(), "notifications"), where("read", "==", false));
+                const snap = await getDocs(q);
+                if (!snap.empty) { const dot = document.getElementById('notifDot'); if(dot) dot.style.display = 'block'; }
+            } catch(e) {}
+        }
+        window.openNotifications = async function() {
+            document.getElementById('notifModal').style.display = 'flex';
+            document.getElementById('notifDot').style.display = 'none';
+            const list = document.getElementById('notifList');
+            list.innerHTML = 'Loading...';
+            try {
+                const q = query(collection(db, "users", currentUser.id.toString(), "notifications"), orderBy("date", "desc"));
+                const snap = await getDocs(q);
+                let html = '';
+                if (snap.empty) html = '<p style="text-align:center; color:#666;">No notifications</p>';
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    const date = d.date ? new Date(d.date.seconds*1000).toLocaleDateString() : '';
+                    html += `<div class="notif-item"><div class="notif-title">${d.title} <span style="float:right; font-size:10px; color:#666;">${date}</span></div><div class="notif-msg">${d.message}</div></div>`;
+                    if(!d.read) updateDoc(doc.ref, { read: true });
+                });
+                list.innerHTML = html;
+            } catch(e) { list.innerHTML = "Error."; }
+        };
+
+        window.renderCheckIn = function() {
+            const container = document.getElementById('dailyCheckinList');
+            if(!container) return;
+            container.innerHTML = '';
+            if(timerInterval) clearInterval(timerInterval);
+            let targetDayIndex = currentUser.currentCheckInDay;
+            if (targetDayIndex >= 30) targetDayIndex = 29;
+            const now = new Date().getTime();
+            let lastTime = currentUser.lastCheckInTime ? currentUser.lastCheckInTime.getTime() : 0;
+            const unlockTime = lastTime + (24 * 60 * 60 * 1000);
+            let isReady = now >= unlockTime;
+            dailyRewards.forEach((points, index) => {
+                let div = document.createElement('div');
+                div.className = 'day-box';
+                if (index === 6 || index === 14 || index === 29) div.classList.add('special');
+                let label = `Day ${index + 1}`;
+                let icon = '<i class="fa-solid fa-gift"></i>';
+                let displayAmount = `<span class="d-amount"><i class="fa-solid fa-question"></i></span>`;
+                if (index === 0 || index === 29) displayAmount = `<span class="d-amount">${points}</span>`;
+                let status = displayAmount;
+                if (index < targetDayIndex) { div.classList.add('claimed'); status = `<span class="d-status">Claimed</span>`; } 
+                else if (index === targetDayIndex) {
+                    if (isReady) { div.classList.add('active'); div.onclick = () => claimBonus(index, points); status = `<span class="d-status">CLAIM</span>`; } 
+                    else { div.classList.add('waiting'); div.id = "timer-day"; icon = '<i class="fa-solid fa-clock"></i>'; const diff = unlockTime - now; status = `<span class="d-status" id="timer-text">${formatTime(diff)}</span>`; }
+                } else { div.style.opacity = "0.5"; icon = '<i class="fa-solid fa-lock"></i>'; }
+                div.innerHTML = `<span class="d-day">${label}</span>${icon}${status}`;
+                container.appendChild(div);
+            });
+            if (!isReady && document.getElementById('timer-text')) {
+                timerInterval = setInterval(() => {
+                    const nowLoop = new Date().getTime();
+                    const diff = unlockTime - nowLoop;
+                    if (diff <= 0) { clearInterval(timerInterval); renderCheckIn(); } 
+                    else { document.getElementById('timer-text').innerText = formatTime(diff); }
+                }, 1000);
+            }
+        };
+
+        function formatTime(ms) {
+            let s = Math.floor((ms / 1000) % 60); let m = Math.floor((ms / (1000 * 60)) % 60); let h = Math.floor((ms / (1000 * 60 * 60)) % 24);
+            return `${h}h ${m}m ${s}s`;
+        }
+
+        window.openHistoryPage = async () => {
+            document.querySelectorAll('.spa-section').forEach(e=>e.classList.remove('active'));
+            document.getElementById('history').classList.add('active');
+            const listW = document.getElementById('list-withdraw');
+            const listE = document.getElementById('list-earn');
+            listW.innerHTML = 'Loading...'; listE.innerHTML = 'Loading...';
+            try {
+                const q = query(collection(db, "users", currentUser.id.toString(), "history"), orderBy("date", "desc"));
+                const snap = await getDocs(q);
+                let wHtml = '', eHtml = '';
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    const date = d.date ? new Date(d.date.seconds*1000).toLocaleDateString() : '';
+                    if(d.category === 'withdraw') {
+                        let stColor = '#fbbf24'; if(d.status === 'Paid') stColor = '#00FF99'; if(d.status === 'Rejected') stColor = '#ff4757';
+                        wHtml += `<div class="tx-card tx-red"><div class="tx-left"><i class="fa-solid fa-minus"></i><div><h4>${d.title}</h4><p>${date}</p></div></div><div class="tx-right"><span class="tx-amount">-${d.amount.toLocaleString()}</span><span class="tx-status" style="background:${stColor}; color:black;">${d.status}</span></div></div>`;
+                    } else {
+                        let bgClass = d.type === 'income' ? 'tx-green' : 'tx-red'; let icon = d.type === 'income' ? 'plus' : 'minus'; let sign = d.type === 'income' ? '+' : '-';
+                        eHtml += `<div class="tx-card ${bgClass}"><div class="tx-left"><i class="fa-solid fa-${icon}"></i><div><h4>${d.title}</h4><p>${date}</p></div></div><div class="tx-right"><span class="tx-amount">${sign}${d.amount.toLocaleString()}</span></div></div>`;
+                    }
+                });
+                listW.innerHTML = wHtml || '<p class="no-data">No withdrawals</p>'; listE.innerHTML = eHtml || '<p class="no-data">No earnings</p>';
+            } catch(e) { listW.innerHTML = 'Error loading history'; }
+        };
+
+        window.openWithdrawPage = () => {
+            if (!currentUser.verified) { openVerifyModal(); return; }
+            document.querySelectorAll('.spa-section').forEach(e=>e.classList.remove('active'));
+            document.getElementById('withdraw').classList.add('active');
+        };
+        window.goBackToHome = () => {
+            document.querySelectorAll('.spa-section').forEach(e=>e.classList.remove('active'));
+            document.getElementById('earn').classList.add('active');
+        };
+        window.selectPayment = (el, method) => {
+            document.querySelectorAll('.pay-btn').forEach(b=>b.classList.remove('selected'));
+            el.classList.add('selected');
+            currentMethod = method;
+            document.getElementById('withdrawForm').style.display = 'block';
+            
+            const label = document.getElementById('walletLabel');
+            const input = document.getElementById('walletInput');
+            if(method === 'bkash' || method === 'nagad') {
+                label.innerText = "Wallet Number (11 Digits)";
+                input.type = "number"; input.placeholder = "01xxxxxxxxx";
+            } else {
+                label.innerText = "Wallet Address";
+                input.type = "text"; input.placeholder = "Enter Address";
+            }
+        };
+        window.processWithdraw = async () => {
+            if (!currentUser.verified) { openVerifyModal(); return; }
+            const num = document.getElementById('walletInput').value;
+            const amt = parseInt(document.getElementById('amountInput').value);
+            if(!num || !amt) { showPopup("Fill all fields", "error"); return; }
+            if((currentMethod === 'bkash' || currentMethod === 'nagad') && num.length !== 11) { showPopup("Number must be 11 digits", "error"); return; }
+            if(amt < 2500) { showPopup("Min withdraw 2500 TAPZO", "error"); return; }
+            if(currentUser.balance < amt) { showPopup("Insufficient Balance", "error"); return; }
+            try {
+                const uid = currentUser.id.toString();
+                const withdrawData = { userId: uid, userName: currentUser.first_name, title: currentMethod.toUpperCase() + " Withdraw", amount: amt, number: num, method: currentMethod, category: 'withdraw', status: 'Pending', date: serverTimestamp() };
+                await addDoc(collection(db, "withdrawals"), withdrawData);
+                await addDoc(collection(db, "users", uid, "history"), withdrawData);
+                await updateDoc(doc(db, "users", uid), { balance: increment(-amt) });
+                currentUser.balance -= amt;
+                updateUI(currentUser);
+                document.getElementById('withdrawForm').style.display = 'none';
+                showPopup("Withdrawal Submitted!", "success");
+            } catch(e) { showPopup("Error", "error"); }
+        };
+
+        window.switchTab = (id, el) => {
+            document.querySelectorAll('.spa-section').forEach(e=>e.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            if(el) el.classList.add('active');
+        };
+        window.switchHistoryTab = (type) => {
+            document.querySelectorAll('.h-tab').forEach(e=>e.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('list-withdraw').classList.remove('active');
+            document.getElementById('list-earn').classList.remove('active');
+            document.getElementById('list-'+type).classList.add('active');
+        };
+    </script>
 </body>
 </html>
