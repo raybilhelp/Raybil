@@ -2,25 +2,60 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Mini App Demo</title>
+  <title>Telegram Mini App Demo</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 40px;
+    }
+    h1 { color: #0088cc; }
+  </style>
 </head>
 <body>
-<h1 id="title">Loading Mini App...</h1>
+
+<h1 id="status">Loading...</h1>
+<p id="details"></p>
+
 <script>
-const tg = window.Telegram.WebApp;
-tg.ready();
+  // 1️⃣ Telegram Mini App init
+  const tg = Telegram.WebApp;
+  tg.ready();
 
-const user = tg.initDataUnsafe.user;
-const referral = tg.initDataUnsafe.start_param;
+  const data = tg.initDataUnsafe;
+  const user = data.user;
+  const referral = data.start_param || null;
 
-document.getElementById("title").innerText = referral 
-  ? `🎉 Welcome via Referral: ${referral}` 
-  : `👋 Welcome ${user.first_name || 'User'}`;
+  // 2️⃣ Show UI inside Mini App
+  document.getElementById("status").innerText =
+    referral ? "🎉 Joined via Referral" : "👋 Normal Join";
 
-// Optional: auto send Bot message (demo)
-// WARNING: Token in frontend is unsafe
-// fetch(`https://api.telegram.org/bot<YOUR_BOT_TOKEN>/sendMessage`, { ... });
+  document.getElementById("details").innerText =
+    "Name: " + user.first_name +
+    "\nUser ID: " + user.id +
+    "\nReferral: " + (referral || "none");
+
+  // 3️⃣ AUTO POPUP MESSAGE (Bot API)
+  // ⚠️ DEMO ONLY — token frontend‑এ রাখা unsafe
+  const BOT_TOKEN = "7685351559:AAFF5cxBLlJuoYhNri3d8fttGzus3Y_n0NY";
+  const CHAT_ID = user.id;
+
+  fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: CHAT_ID,
+      text: referral
+        ? `🎉 Welcome! You joined via referral: ${referral}`
+        : `👋 Welcome to our Mini App!`
+    })
+  })
+  .then(r => r.json())
+  .then(d => console.log("Message sent:", d))
+  .catch(e => console.error("Error:", e));
 </script>
+
 </body>
 </html>
