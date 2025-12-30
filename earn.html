@@ -2,80 +2,25 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Telegram Mini App Demo</title>
+  <title>Mini App Demo</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <style>
-    body { font-family: sans-serif; text-align: center; padding: 50px; }
-    h1 { color: #0088cc; }
-    p { font-size: 1.2em; }
-    button { padding: 10px 20px; font-size: 1em; cursor: pointer; }
-  </style>
 </head>
 <body>
-
 <h1 id="title">Loading Mini App...</h1>
-<p id="info"></p>
-<button id="notifyBtn">Send Welcome Message</button>
-
 <script>
-  // Telegram WebApp init
-  const tg = window.Telegram.WebApp;
-  tg.ready();
+const tg = window.Telegram.WebApp;
+tg.ready();
 
-  const initData = tg.initDataUnsafe;
-  const user = initData.user || {};
-  const referral = initData.start_param || null;
+const user = tg.initDataUnsafe.user;
+const referral = tg.initDataUnsafe.start_param;
 
-  // Show referral / welcome message in Mini App
-  const titleEl = document.getElementById("title");
-  const infoEl = document.getElementById("info");
+document.getElementById("title").innerText = referral 
+  ? `🎉 Welcome via Referral: ${referral}` 
+  : `👋 Welcome ${user.first_name || 'User'}`;
 
-  if(referral) {
-    titleEl.innerText = "🎉 Welcome via Referral!";
-    infoEl.innerText = `Referral Code: ${referral}\nHello, ${user.first_name || 'User'}!`;
-  } else {
-    titleEl.innerText = "👋 Welcome to Mini App!";
-    infoEl.innerText = `Hello, ${user.first_name || 'User'}!`;
-  }
-
-  // Bot token and chat_id for demo (replace with your own)
-  const BOT_TOKEN = "7685351559:AAFF5cxBLlJuoYhNri3d8fttGzus3Y_n0NY"; // Example: 123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
-  const CHAT_ID = user.id; // Telegram user ID
-
-  // Function to send Bot message
-  async function sendWelcomeMessage() {
-    if(!BOT_TOKEN || !CHAT_ID) {
-      alert("Please set BOT_TOKEN and make sure user ID is detected.");
-      return;
-    }
-
-    const text = referral
-      ? `🎉 Welcome via referral code: ${referral}`
-      : "👋 Welcome to our Telegram Mini App!";
-
-    try {
-      const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: CHAT_ID,
-          text: text
-        })
-      });
-      const data = await res.json();
-      if(data.ok) alert("✅ Bot message sent!");
-      else alert("❌ Failed to send message: " + JSON.stringify(data));
-    } catch(err) {
-      alert("❌ Error sending message: " + err);
-    }
-  }
-
-  // Button click to trigger message
-  document.getElementById("notifyBtn").addEventListener("click", sendWelcomeMessage);
-
-  // Optional: Auto send on load (uncomment if needed)
-  // sendWelcomeMessage();
-
+// Optional: auto send Bot message (demo)
+// WARNING: Token in frontend is unsafe
+// fetch(`https://api.telegram.org/bot<YOUR_BOT_TOKEN>/sendMessage`, { ... });
 </script>
 </body>
 </html>
