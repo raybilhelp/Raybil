@@ -1,85 +1,81 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ret_v_bot Mini App</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f0f2f5;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .container {
-            text-align: center;
-            padding: 20px;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        }
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
-            background-color: #0088cc;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Telegram Mini App Demo</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 50px; }
+    h1 { color: #0088cc; }
+    p { font-size: 1.2em; }
+    button { padding: 10px 20px; font-size: 1em; cursor: pointer; }
+  </style>
 </head>
 <body>
 
-<div class="container">
-    <h2 id="welcome">স্বাগতম!</h2>
-    <p id="ref-status">রেফারেল চেক করা হচ্ছে...</p>
-    <button onclick="shareLink()">বন্ধুদের ইনভাইট করুন</button>
-</div>
+<h1 id="title">Loading Mini App...</h1>
+<p id="info"></p>
+<button id="notifyBtn">Send Welcome Message</button>
 
 <script>
-    // টেলিগ্রাম ওয়েব অ্যাপ ইনিশিয়ালাইজ করা
-    const tg = window.Telegram.WebApp;
-    tg.expand(); // অ্যাপটি পুরো স্ক্রিন জুড়ে ওপেন হবে
+  // Telegram WebApp init
+  const tg = window.Telegram.WebApp;
+  tg.ready();
 
-    // পেজ লোড হওয়ার পর লজিক রান করা
-    window.onload = () => {
-        const user = tg.initDataUnsafe.user;
-        if (user) {
-            document.getElementById('welcome').innerText = `হ্যালো, ${user.first_name}!`;
-        }
+  const initData = tg.initDataUnsafe;
+  const user = initData.user || {};
+  const referral = initData.start_param || null;
 
-        // রেফারেল আইডি (start_param) সংগ্রহ করা
-        const referralId = tg.initDataUnsafe.start_param;
-        const statusText = document.getElementById('ref-status');
+  // Show referral / welcome message in Mini App
+  const titleEl = document.getElementById("title");
+  const infoEl = document.getElementById("info");
 
-        if (referralId) {
-            statusText.innerText = "আপনি যার মাধ্যমে এসেছেন তার আইডি: " + referralId;
-            statusText.style.color = "green";
-            
-            // এখানে আপনি আপনার সার্ভার/এপিআই-তে ডাটা পাঠাতে পারেন
-            console.log("Referral Detected:", referralId);
-        } else {
-            statusText.innerText = "আপনি সরাসরি অ্যাপে প্রবেশ করেছেন।";
-        }
-    };
+  if(referral) {
+    titleEl.innerText = "🎉 Welcome via Referral!";
+    infoEl.innerText = `Referral Code: ${referral}\nHello, ${user.first_name || 'User'}!`;
+  } else {
+    titleEl.innerText = "👋 Welcome to Mini App!";
+    infoEl.innerText = `Hello, ${user.first_name || 'User'}!`;
+  }
 
-    // ইনভাইট বাটন ফাংশন
-    function shareLink() {
-        const userId = tg.initDataUnsafe.user.id;
-        const inviteLink = `https://t.me/Ret_v_bot/app?startapp=${userId}`;
-        const text = "এই মিনি অ্যাপে জয়েন করে উপহার জিতে নিন!";
-        
-        const fullShareUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(text)}`;
-        tg.openTelegramLink(fullShareUrl);
+  // Bot token and chat_id for demo (replace with your own)
+  const BOT_TOKEN = "7685351559:AAFF5cxBLlJuoYhNri3d8fttGzus3Y_n0NY"; // Example: 123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
+  const CHAT_ID = user.id; // Telegram user ID
+
+  // Function to send Bot message
+  async function sendWelcomeMessage() {
+    if(!BOT_TOKEN || !CHAT_ID) {
+      alert("Please set BOT_TOKEN and make sure user ID is detected.");
+      return;
     }
-</script>
 
+    const text = referral
+      ? `🎉 Welcome via referral code: ${referral}`
+      : "👋 Welcome to our Telegram Mini App!";
+
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: CHAT_ID,
+          text: text
+        })
+      });
+      const data = await res.json();
+      if(data.ok) alert("✅ Bot message sent!");
+      else alert("❌ Failed to send message: " + JSON.stringify(data));
+    } catch(err) {
+      alert("❌ Error sending message: " + err);
+    }
+  }
+
+  // Button click to trigger message
+  document.getElementById("notifyBtn").addEventListener("click", sendWelcomeMessage);
+
+  // Optional: Auto send on load (uncomment if needed)
+  // sendWelcomeMessage();
+
+</script>
 </body>
 </html>
