@@ -3,34 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TMA Earning App</title>
+    <title>Telegram Earning App</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 20px; background: #f4f7f9; }
+        body { font-family: sans-serif; text-align: center; padding: 20px; background: #f0f2f5; }
         .card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); max-width: 400px; margin: 0 auto; }
-        button { background: #0088cc; color: white; border: none; padding: 15px; border-radius: 12px; width: 100%; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 20px; }
-        #log { margin-top: 20px; font-size: 13px; color: #666; background: #eee; padding: 10px; border-radius: 8px; border: 1px solid #ddd; word-break: break-all; }
-        .balance-box { font-size: 28px; font-weight: bold; color: #2ecc71; margin: 20px 0; }
+        .balance { font-size: 35px; font-weight: bold; color: #2ecc71; margin: 20px 0; }
+        button { background: #0088cc; color: white; border: none; padding: 15px; border-radius: 12px; width: 100%; font-size: 18px; font-weight: bold; cursor: pointer; }
+        #log { margin-top: 20px; font-size: 12px; color: #888; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h3 id="user-name">Initializing...</h3>
+    <h3 id="display-name">Loading...</h3>
+    <p>Your Balance</p>
+    <div class="balance"><span id="balance">0</span></div>
     
-    <div id="reg-section">
-        <p>রেজিস্ট্রেশন করতে নিচে ক্লিক করুন</p>
-        <button onclick="register()">Verify Phone Number</button>
-    </div>
-
-    <div id="app-section" style="display:none">
-        <p>ব্যালেন্স</p>
-        <div class="balance-box"><span id="balance">0</span></div>
-        <button onclick="addPoints()">Daily Claim (+10)</button>
-    </div>
-
-    <div id="log">Status: Loading...</div>
+    <button onclick="claimReward()">Claim Daily Reward (+10)</button>
+    
+    <div id="log">Checking account...</div>
 </div>
 
 <script>
@@ -44,76 +37,60 @@
 
     const user = tg.initDataUnsafe.user;
 
-    function setLog(msg) {
-        document.getElementById('log').innerText = "Status: " + msg;
-    }
+    async function initApp() {
+        if (!user) {
+            document.getElementById('log').innerText = "Please open in Telegram Mobile";
+            return;
+        }
 
-    if(user) {
-        document.getElementById('user-name').innerText = "Hello, " + (user.first_name || "User");
-        checkUser();
-    } else {
-        setLog("Error: Open in Telegram Mobile");
-    }
+        document.getElementById('display-name').innerText = user.first_name;
 
-    async function checkUser() {
-        const { data, error } = await sb.from('users').select('*').eq('telegram_id', user.id).single();
-        if (data && data.phone) {
-            showApp(data.balance);
+        // ১. চেক করুন ইউজার ডাটাবেজে আছে কি না, না থাকলে তৈরি করুন
+        const { data, error } = await sb
+            .from('users')
+            .select('*')
+            .eq('telegram_id', user.id)
+            .single();
+
+        if (!data) {
+            // নতুন ইউজার তৈরি
+            await sb.from('users').insert([{ 
+                telegram_id: user.id, 
+                username: user.username, 
+                full_name: user.first_name,
+                balance: 0 
+            }]);
+            updateUI(0);
         } else {
-            setLog("Please click the button above to verify.");
+            updateUI(data.balance);
         }
     }
 
-    function showApp(balance) {
-        document.getElementById('reg-section').style.display = 'none';
-        document.getElementById('app-section').style.display = 'block';
+    function updateUI(balance) {
         document.getElementById('balance').innerText = balance;
-        setLog("Ready!");
+        document.getElementById('log').innerText = "Logged in as ID: " + user.id;
     }
 
-    function register() {
-        setLog("Opening Telegram Popup...");
+    async function claimReward() {
+        document.getElementById('log').innerText = "Claiming...";
         
-        tg.requestContact(async (result) => {
-            // এখানে পরিবর্তন করা হয়েছে: result.status চেক করা হচ্ছে
-            if (result && result.status === 'sent') {
-                // সঠিক ডাটা পাথ: result.response.contact.phone_number
-                const phone = result.response.contact.phone_number;
-                setLog("Phone received! Saving to Database...");
-
-                const { error } = await sb.from('users').upsert({ 
-                    telegram_id: user.id, 
-                    username: user.username || '', 
-                    phone: phone 
-                });
-
-                if (error) {
-                    setLog("DB Error: " + error.message);
-                } else {
-                    showApp(0);
-                }
-            } else {
-                // যদি ইউজার পপ-আপে 'Cancel' করে বা কোনো এরর হয়
-                setLog("Request failed or cancelled.");
-                alert("নম্বর শেয়ার না করলে আগানো সম্ভব নয়।");
-            }
-        });
-    }
-
-    async function addPoints() {
-        setLog("Claiming...");
+        // ব্যালেন্স বাড়ানোর ফাংশন কল
         const { error } = await sb.rpc('increment_balance', { 
             user_id_input: user.id, 
             amount: 10 
         });
 
         if (!error) {
-            setLog("Success!");
-            checkUser();
+            // ডাটাবেজ থেকে লেটেস্ট ব্যালেন্স নিয়ে আসা
+            const { data } = await sb.from('users').select('balance').eq('telegram_id', user.id).single();
+            updateUI(data.balance);
+            alert("Success! +10 Points");
         } else {
-            setLog("Error: " + error.message);
+            alert("Error: " + error.message);
         }
     }
+
+    initApp();
 </script>
 
 </body>
