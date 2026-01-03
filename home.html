@@ -3,27 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telegram Earning App</title>
+    <title>Secure Earning App</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 20px; background: #f0f2f5; }
+        body { font-family: sans-serif; text-align: center; padding: 20px; background: #f4f7f9; }
         .card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); max-width: 400px; margin: 0 auto; }
         .balance { font-size: 35px; font-weight: bold; color: #2ecc71; margin: 20px 0; }
         button { background: #0088cc; color: white; border: none; padding: 15px; border-radius: 12px; width: 100%; font-size: 18px; font-weight: bold; cursor: pointer; }
-        #log { margin-top: 20px; font-size: 12px; color: #888; }
+        #status { margin-top: 20px; font-size: 13px; color: #888; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h3 id="display-name">Loading...</h3>
-    <p>Your Balance</p>
+    <h3 id="name">Connecting...</h3>
+    <p>Your Secure Balance</p>
     <div class="balance"><span id="balance">0</span></div>
-    
-    <button onclick="claimReward()">Claim Daily Reward (+10)</button>
-    
-    <div id="log">Checking account...</div>
+    <button id="claim-btn" onclick="claimReward()" disabled>Daily Claim (+10)</button>
+    <div id="status">Syncing with server...</div>
 </div>
 
 <script>
@@ -37,61 +35,69 @@
 
     const user = tg.initDataUnsafe.user;
 
-    async function initApp() {
+    async function startApp() {
         if (!user) {
-            document.getElementById('log').innerText = "Please open in Telegram Mobile";
+            document.getElementById('status').innerText = "Please open in Telegram Mobile";
             return;
         }
 
-        document.getElementById('display-name').innerText = user.first_name;
+        const virtualEmail = `user_${user.id}@tg.app`;
+        const virtualPass = `pass_${user.id}_secret`;
 
-        // ১. চেক করুন ইউজার ডাটাবেজে আছে কি না, না থাকলে তৈরি করুন
-        const { data, error } = await sb
-            .from('users')
-            .select('*')
-            .eq('telegram_id', user.id)
-            .single();
+        // ১. অটো লগইন চেষ্টা করা
+        let { data, error } = await sb.auth.signInWithPassword({
+            email: virtualEmail,
+            password: virtualPass,
+        });
 
-        if (!data) {
-            // নতুন ইউজার তৈরি
-            await sb.from('users').insert([{ 
-                telegram_id: user.id, 
-                username: user.username, 
-                full_name: user.first_name,
-                balance: 0 
-            }]);
-            updateUI(0);
-        } else {
-            updateUI(data.balance);
+        // ২. একাউন্ট না থাকলে নতুন একাউন্ট তৈরি (Sign Up)
+        if (error) {
+            const { data: sData, error: sError } = await sb.auth.signUp({
+                email: virtualEmail,
+                password: virtualPass,
+            });
+
+            if (sData.user) {
+                // public.users টেবিলে ডাটা ইনসার্ট
+                await sb.from('users').insert([{ 
+                    id: sData.user.id, 
+                    telegram_id: user.id, 
+                    username: user.username,
+                    balance: 0 
+                }]);
+                data = sData;
+            }
+        }
+
+        if (data && data.user) {
+            fetchBalance();
         }
     }
 
-    function updateUI(balance) {
-        document.getElementById('balance').innerText = balance;
-        document.getElementById('log').innerText = "Logged in as ID: " + user.id;
+    async function fetchBalance() {
+        const { data } = await sb.from('users').select('balance').single();
+        if (data) {
+            document.getElementById('balance').innerText = data.balance;
+            document.getElementById('name').innerText = user.first_name;
+            document.getElementById('status').innerText = "Connected Securely";
+            document.getElementById('claim-btn').disabled = false;
+        }
     }
 
     async function claimReward() {
-        document.getElementById('log').innerText = "Claiming...";
-        
-        // ব্যালেন্স বাড়ানোর ফাংশন কল
-        const { error } = await sb.rpc('increment_balance', { 
-            user_id_input: user.id, 
-            amount: 10 
-        });
+        document.getElementById('status').innerText = "Processing...";
+        // RPC ব্যবহার করা হয়েছে যাতে কেউ সরাসরি ডাটা চেঞ্জ করতে না পারে
+        const { error } = await sb.rpc('increment_balance', { amount: 10 });
 
         if (!error) {
-            // ডাটাবেজ থেকে লেটেস্ট ব্যালেন্স নিয়ে আসা
-            const { data } = await sb.from('users').select('balance').eq('telegram_id', user.id).single();
-            updateUI(data.balance);
+            fetchBalance();
             alert("Success! +10 Points");
         } else {
-            alert("Error: " + error.message);
+            alert("Hacking Attempt Blocked or Error!");
         }
     }
 
-    initApp();
+    startApp();
 </script>
-
 </body>
 </html>
