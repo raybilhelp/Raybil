@@ -1,117 +1,89 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Earning App</title>
+    <title>TMA Supabase</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: sans-serif; background: #f0f2f5; text-align: center; padding: 20px; }
-        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .balance { font-size: 24px; font-weight: bold; color: #2ecc71; margin: 10px 0; }
-        button { background: #0088cc; color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-size: 16px; width: 100%; margin-top: 10px; }
-        button:disabled { background: #ccc; }
-        #status { margin-top: 15px; font-size: 14px; color: #555; }
+        body { font-family: sans-serif; text-align: center; padding: 20px; background: #fafafa; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        button { background: #0088cc; color: white; border: none; padding: 15px; border-radius: 10px; width: 100%; font-size: 16px; margin-top: 10px; }
+        #log { color: red; margin-top: 20px; font-size: 12px; text-align: left; background: #eee; padding: 5px; }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <h2>Welcome, <span id="user-name">User</span></h2>
-        <p>Your Balance</p>
-        <div class="balance"><span id="balance">0</span> Points</div>
-        
-        <!-- রেজিস্ট্রেশন বাটন (ফোন নম্বর শেয়ারের জন্য) -->
-        <div id="reg-section">
-            <button onclick="registerWithPhone()">Verify Phone to Start</button>
-        </div>
-
-        <!-- টাস্ক বাটন (ব্যালেন্স বাড়ানোর জন্য) -->
-        <div id="task-section" style="display:none;">
-            <button onclick="doTask()">Daily Reward (+10)</button>
-        </div>
-
-        <p id="statusText"></p>
+<div class="card">
+    <h3 id="user-name">Loading...</h3>
+    <div id="reg-section">
+        <p>রেজিস্ট্রেশন করতে নিচের বাটনে ক্লিক করুন</p>
+        <button onclick="register()">Verify Phone Number</button>
     </div>
+    <div id="app-section" style="display:none">
+        <p>আপনার ব্যালেন্স: <b id="balance">0</b></p>
+    </div>
+    <div id="log">Status: Waiting for action...</div>
+</div>
 
-    <script>
-        // ১. সুপাবেস কানেকশন
-        const SUPABASE_URL = "https://pjpythndmjzwvhqdtlpu.supabase.co";
-        const SUPABASE_KEY = "sb_publishable_KlFaHCxw4to9hzOLLVQl1Q_5EtJMkjc";
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+<script>
+    const tg = window.Telegram.WebApp;
+    const SUPABASE_URL = "https://pjpythndmjzwvhqdtlpu.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_KlFaHCxw4to9hzOLLVQl1Q_5EtJMkjc";
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // ২. টেলিগ্রাম ডাটা সংগ্রহ
-        const tg = window.Telegram.WebApp;
-        tg.expand(); // অ্যাপ ফুল স্ক্রিন করা
-        const user = tg.initDataUnsafe.user;
+    tg.expand();
+    const user = tg.initDataUnsafe.user;
 
-        document.getElementById('user-name').innerText = user?.first_name || "User";
+    if(user) {
+        document.getElementById('user-name').innerText = "Hello, " + (user.username || user.first_name);
+        checkUser();
+    } else {
+        document.getElementById('log').innerText = "Error: Please open from Telegram Bot";
+    }
 
-        // ৩. ইউজারের বর্তমান ডাটা চেক করা
-        async function loadUserData() {
-            if (!user) return;
-            
-            const { data, error } = await supabase
-                .from('users')
-                .select('*')
-                .eq('telegram_id', user.id)
-                .single();
-
-            if (data) {
-                document.getElementById('balance').innerText = data.balance;
-                if (data.phone) {
-                    document.getElementById('reg-section').style.display = 'none';
-                    document.getElementById('task-section').style.display = 'block';
-                }
-            }
+    async function checkUser() {
+        const { data, error } = await supabase.from('users').select('*').eq('telegram_id', user.id).single();
+        if (data && data.phone) {
+            showApp(data.balance);
         }
+    }
 
-        // ৪. ফোন নম্বর রিকোয়েস্ট (টেলিগ্রাম ফিচার)
-        function registerWithPhone() {
-            tg.requestContact(async (callbackData) => {
-                if (callbackData.status === 'sent') {
-                    const phoneNumber = callbackData.response.contact.phone_number;
-                    
-                    // সুপাবেসে ডাটা সেভ বা আপডেট
-                    const { error } = await supabase
-                        .from('users')
-                        .upsert({ 
-                            telegram_id: user.id, 
-                            username: user.username, 
-                            phone: phoneNumber 
-                        });
+    function showApp(balance) {
+        document.getElementById('reg-section').style.display = 'none';
+        document.getElementById('app-section').style.display = 'block';
+        document.getElementById('balance').innerText = balance;
+        document.getElementById('log').innerText = "Status: User Logged In";
+    }
 
-                    if (!error) {
-                        alert("Verification Successful!");
-                        loadUserData();
-                    }
+    function register() {
+        document.getElementById('log').innerText = "Status: Requesting Contact...";
+        
+        tg.requestContact(async (result) => {
+            if (result.status === 'sent') {
+                const phone = result.contact.phone_number;
+                document.getElementById('log').innerText = "Status: Saving to Database...";
+
+                const { data, error } = await supabase
+                    .from('users')
+                    .upsert({ 
+                        telegram_id: user.id, 
+                        username: user.username, 
+                        phone: phone 
+                    }).select();
+
+                if (error) {
+                    document.getElementById('log').innerText = "DB Error: " + error.message;
                 } else {
-                    alert("Permission denied!");
+                    showApp(0);
                 }
-            });
-        }
-
-        // ৫. সিম্পল ইনকাম টাস্ক (পয়েন্ট যোগ করা)
-        async function doTask() {
-            document.getElementById('statusText').innerText = "Processing...";
-            
-            // ডাটাবেজ ফাংশন কল করা (যা আমরা SQL এ তৈরি করেছি)
-            const { error } = await supabase.rpc('increment_balance', { 
-                user_id_input: user.id, 
-                amount: 10 
-            });
-
-            if (!error) {
-                document.getElementById('statusText').innerText = "Points Added!";
-                loadUserData(); // ব্যালেন্স আপডেট করা
             } else {
-                document.getElementById('statusText').innerText = "Error: " + error.message;
+                document.getElementById('log').innerText = "Status: Contact Request Denied";
             }
-        }
+        });
+    }
+</script>
 
-        // অ্যাপ লোড হওয়ার সময় ডাটা চেক
-        loadUserData();
-    </script>
 </body>
 </html>
