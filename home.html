@@ -3,142 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TMA Earning App</title>
-    <!-- টেলিগ্রাম এবং সুপাবেস লাইব্রেরি -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <title>Earning App - Verified</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding: 20px; background: #f4f7f9; color: #333; }
-        .card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); max-width: 400px; margin: 0 auto; }
-        h3 { margin-top: 0; color: #0088cc; }
-        button { background: #0088cc; color: white; border: none; padding: 15px 20px; border-radius: 12px; width: 100%; font-size: 18px; font-weight: bold; cursor: pointer; transition: background 0.3s; margin-top: 20px; }
-        button:active { background: #006699; transform: scale(0.98); }
-        #log { margin-top: 20px; font-size: 13px; color: #666; background: #eee; padding: 10px; border-radius: 8px; border: 1px solid #ddd; word-break: break-all; }
-        .balance-box { font-size: 24px; font-weight: bold; color: #2ecc71; margin: 20px 0; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 20px; }
+        .card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 380px; text-align: center; }
+        input { width: 90%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 10px; font-size: 16px; }
+        button { width: 100%; padding: 14px; background: #0088cc; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .switch-btn { color: #0088cc; cursor: pointer; display: block; margin-top: 15px; font-size: 14px; }
+        #dashboard, #auth-section { display: none; }
+        .balance-card { background: #e8f5e9; padding: 20px; border-radius: 15px; margin: 20px 0; }
+        .balance-amount { font-size: 32px; font-weight: bold; color: #2e7d32; }
+        #error-msg { color: #d32f2f; font-size: 13px; margin-top: 10px; min-height: 20px; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h3 id="user-name">Initializing...</h3>
-    
-    <div id="reg-section">
-        <p>রেজিস্ট্রেশন করতে নিচের বাটনে ক্লিক করে আপনার ফোন নম্বর শেয়ার করুন।</p>
-        <button id="reg-btn" onclick="register()">Verify Phone Number</button>
+    <!-- ১. অথেনটিকেশন সেকশন -->
+    <div id="auth-section">
+        <h2 id="title">Login</h2>
+        <input type="email" id="email" placeholder="Email Address">
+        <input type="password" id="password" placeholder="Password">
+        <button id="main-btn" onclick="handleAuth()">Login</button>
+        <span class="switch-btn" id="toggle-link" onclick="toggleMode()">Don't have an account? Sign Up</span>
+        <div id="error-msg"></div>
     </div>
 
-    <div id="app-section" style="display:none">
-        <p>আপনার বর্তমান ব্যালেন্স</p>
-        <div class="balance-box"><span id="balance">0</span> Points</div>
-        <button onclick="addPoints()">Daily Task (+10)</button>
+    <!-- ২. ড্যাশবোর্ড সেকশন -->
+    <div id="dashboard">
+        <h3>Welcome Back!</h3>
+        <div class="balance-card">
+            <p>Your Balance</p>
+            <div class="balance-amount"><span id="balance">0</span></div>
+        </div>
+        <button onclick="earnPoints()">Claim Reward (+10)</button>
+        <button style="background:#666; margin-top:15px;" onclick="logout()">Logout</button>
     </div>
-
-    <div id="log">Status: Loading scripts...</div>
 </div>
 
 <script>
-    // ১. টেলিগ্রাম এবং সুপাবেস সেটআপ
-    const tg = window.Telegram.WebApp;
     const SUPABASE_URL = "https://pjpythndmjzwvhqdtlpu.supabase.co";
     const SUPABASE_KEY = "sb_publishable_KlFaHCxw4to9hzOLLVQl1Q_5EtJMkjc";
-    
-    // ভেরিয়েবল নাম পরিবর্তন করা হয়েছে (sb) যাতে কনফ্লিক্ট না হয়
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // টেলিগ্রাম অ্যাপ প্রস্তুত করা
-    tg.ready();
-    tg.expand();
+    let isLoginMode = true;
 
-    const user = tg.initDataUnsafe.user;
-    const logDiv = document.getElementById('log');
-
-    // লগ দেখানোর ফাংশন
-    function setLog(msg) {
-        logDiv.innerText = "Status: " + msg;
+    function toggleMode() {
+        isLoginMode = !isLoginMode;
+        document.getElementById('title').innerText = isLoginMode ? "Login" : "Sign Up";
+        document.getElementById('main-btn').innerText = isLoginMode ? "Login" : "Sign Up";
+        document.getElementById('toggle-link').innerText = isLoginMode ? "Don't have an account? Sign Up" : "Already have an account? Login";
+        document.getElementById('error-msg').innerText = "";
     }
 
-    // ২. অ্যাপ শুরু হওয়া
-    if(user) {
-        document.getElementById('user-name').innerText = "Hello, " + (user.first_name || "User");
-        setLog("Checking database for user...");
-        checkUser();
-    } else {
-        setLog("Error: Please open this app from Telegram Bot.");
-        document.getElementById('reg-btn').disabled = true;
-    }
+    // অথেনটিকেশন হ্যান্ডেলার
+    async function handleAuth() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const errorMsg = document.getElementById('error-msg');
+        errorMsg.style.color = "blue";
+        errorMsg.innerText = "Processing...";
 
-    // ৩. ইউজার ডাটাবেজে আছে কি না চেক করা
-    async function checkUser() {
-        try {
-            const { data, error } = await sb
-                .from('users')
-                .select('*')
-                .eq('telegram_id', user.id)
-                .single();
-
-            if (data && data.phone) {
-                showApp(data.balance);
+        if (isLoginMode) {
+            // লগইন প্রসেস
+            const { data, error } = await sb.auth.signInWithPassword({ email, password });
+            if (error) {
+                errorMsg.style.color = "red";
+                errorMsg.innerText = error.message;
             } else {
-                setLog("Please verify your phone to continue.");
+                checkSession();
             }
-        } catch (e) {
-            setLog("Error: " + e.message);
+        } else {
+            // সাইন-আপ প্রসেস (ভেরিফিকেশনসহ)
+            const { data, error } = await sb.auth.signUp({ email, password });
+            if (error) {
+                errorMsg.style.color = "red";
+                errorMsg.innerText = error.message;
+            } else {
+                // ইউজার টেবিলে ডাটা তৈরি (সুপাবেস ট্রিগার দিয়েও করা যায়, তবে এখানে কোড দিয়ে দেখাচ্ছি)
+                if (data.user) {
+                    await sb.from('users').insert([{ id: data.user.id, email: email, balance: 0 }]);
+                }
+                errorMsg.style.color = "green";
+                errorMsg.innerText = "ভেরিফিকেশন লিঙ্ক আপনার ইমেইলে পাঠানো হয়েছে। ইমেইল চেক করে লিঙ্কটিতে ক্লিক করুন, তারপর লগইন করুন।";
+                alert("Check your email for confirmation link!");
+                toggleMode();
+            }
         }
     }
 
-    function showApp(balance) {
-        document.getElementById('reg-section').style.display = 'none';
-        document.getElementById('app-section').style.display = 'block';
-        document.getElementById('balance').innerText = balance;
-        setLog("Logged in successfully!");
+    // সেশন চেক (লগইন করা আছে কি না)
+    async function checkSession() {
+        const { data: { session } } = await sb.auth.getSession();
+        if (session) {
+            document.getElementById('auth-section').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            loadData(session.user.id);
+        } else {
+            document.getElementById('auth-section').style.display = 'block';
+            document.getElementById('dashboard').style.display = 'none';
+        }
     }
 
-    // ৪. রেজিস্ট্রেশন ফাংশন (Phone Share)
-    function register() {
-        setLog("Requesting contact from Telegram...");
-        
-        tg.requestContact(async (result) => {
-            if (result && result.contact) {
-                const phone = result.contact.phone_number;
-                setLog("Saving " + phone + " to database...");
-
-                const { data, error } = await sb
-                    .from('users')
-                    .upsert({ 
-                        telegram_id: user.id, 
-                        username: user.username || '', 
-                        phone: phone 
-                    })
-                    .select();
-
-                if (error) {
-                    setLog("Database Error: " + error.message);
-                    console.error(error);
-                } else {
-                    showApp(0);
-                }
-            } else {
-                setLog("Contact request was cancelled.");
-                alert("আপনার ফোন নম্বর শেয়ার না করলে অ্যাপটি ব্যবহার করা যাবে না।");
-            }
-        });
+    // ডাটা লোড করা
+    async function loadData(uid) {
+        const { data, error } = await sb.from('users').select('balance').eq('id', uid).single();
+        if (data) {
+            document.getElementById('balance').innerText = data.balance;
+        }
     }
 
-    // ৫. পয়েন্ট যোগ করার ফাংশন
-    async function addPoints() {
-        setLog("Adding points...");
+    // পয়েন্ট ইনকাম করা
+    async function earnPoints() {
+        const { data: { session } } = await sb.auth.getSession();
         const { error } = await sb.rpc('increment_balance', { 
-            user_id_input: user.id, 
+            user_id_input: session.user.id, 
             amount: 10 
         });
 
-        if (error) {
-            setLog("Update Error: " + error.message);
+        if (!error) {
+            alert("10 Points Added!");
+            loadData(session.user.id);
         } else {
-            setLog("10 Points Added!");
-            checkUser(); // ব্যালেন্স রিফ্রেশ
+            alert("Error: " + error.message);
         }
     }
+
+    async function logout() {
+        await sb.auth.signOut();
+        location.reload();
+    }
+
+    // অ্যাপ স্টার্ট হলে সেশন চেক করবে
+    checkSession();
 </script>
 
 </body>
